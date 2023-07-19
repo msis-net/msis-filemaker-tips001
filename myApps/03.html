@@ -1,0 +1,393 @@
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    
+    <!-- Vue3 -->
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        }
+      }
+    </script>
+    
+    <title>Claris</title>
+  </head>
+<body>
+  
+   <div id="app" class="m-3 p-2">
+      <h5>Java Scriptによる検索処理</h5>
+      <div class="row mb-3">
+        <div class="col-sm-3">
+          <select id="select_pref" @input="pref_change" class="form-select" aria-label="Default select example" >
+          
+          </select>
+        </div>
+        <div class="col-sm-3">
+          <select id="select_city" v-model="cityselect" @input="city_change" class="form-select" aria-label="Default select example" >
+            <option v-for="option in cityList" :key="option.key" :value="option.value">
+              {{option.name}}({{option.kana}})
+            </option>
+          </select>
+        </div>
+        <div class="col-sm-6">
+          <select id="select_town" v-model="townselect" @input="town_change" class="form-select" aria-label="Default select example" >
+            <option v-for="option in townList" :key="option.key" :value="option.value">
+              {{option.name}}({{option.kana}})
+            </option>
+          </select>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-sm-3">
+          <input type="text" class="form-control" id="post" placeholder="〒">
+        </div>
+        <div class="col-sm-9">
+          <input type="text" class="form-control" id="address" placeholder="住所結果">
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-3">
+          
+        </div>
+        <div class="col-9">
+          <input type="text" class="form-control" id="addresskana" placeholder="ジュウショカナ">
+        </div>
+      </div>
+      
+    </div>
+    
+<script type="module">
+import { createApp, ref } from 'vue'
+let KEN_All = [];//読み込んだ住所データ
+let prefList = [{value: '00', name: '', kana : '都道府県' }];
+let CITY = [];
+let TOWN = [];
+
+
+
+let app = createApp({
+      el: '#app',
+      data() {
+        return {
+          counter : 0,
+          time : 0,
+          keyword: '',
+          lists: [],    //一覧に表示されるリスト
+          prefList : [],
+          cityselect : 0,
+          cityList:[],
+          townList : [],
+          townLselect : 0,
+        }
+      },
+      mounted() {
+            window.onload = () => {
+              let st = performance.now();
+              let xhr = new XMLHttpRequest();
+              xhr.open('GET', 'utf_all.csv', true);
+              xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                  if (xhr.status === 200) {
+                    SetData( xhr.responseText );
+                    let ed = performance.now();
+                    let tm = Math.round((ed - st),0)/1000;
+                    app.time = tm;
+                    console.log('通信完了');
+                    SetPref();
+                  } else {
+                    console.log('通信エラーが発生')
+                  }
+                } else {
+                  console.log('通信中...')
+                }
+              }
+              xhr.send(null);
+            };
+      },
+      methods: {
+        change(e) {
+          console.log(e.target.value);
+          let input = document.getElementById('filecsv');
+          let reader = new FileReader();
+          let st = performance.now();
+          let tm = 0;
+          for(let file of input.files){
+            reader.readAsText(file, 'utf-8');
+            reader.onload = ()=> {
+                SetData( reader.result );//読み取った中身を登録
+                let ed = performance.now();
+                let tm = Math.round((ed - st),0)/1000;
+                
+                console.log('ファイルを読み込みました！:'+KEN_All.length+'件['+tm+' sec]');
+                console.log(this.time,KEN_All[12000]);
+                
+            };
+          }
+        },
+        pref_change(event){
+          post.value = "";
+          address.value = "";
+          address.kana = "";
+
+          this.cityList = [];
+          this.townList = [];
+          
+          let TMP = [{value: '00', name: '', kana : '市区町村' }]; 
+          let getkencd = event.target.value;
+          console.log(getkencd);
+          for( let i in KEN_All ){
+            let item = KEN_All[i];
+            if( item.kencd == getkencd ){
+              //console.log(item);
+              var city_check = TMP.find((v) => v.value == item.localcd);
+              if( city_check == undefined ){
+                let tmp_data = {
+                  value : item.localcd,
+                  name : item.cityname,
+                  kana : item.citykana
+                }
+                //console.log(tmp_data);
+                TMP.push(tmp_data);
+              }
+            }
+          }
+          this.cityList = TMP;
+          this.cityselect = "00";
+          this.townselect = "00";
+        },
+        city_change(event){
+          post.value = "";
+          address.value = "";
+          address.kana = "";
+
+          this.townList = [];
+          
+          let TMP = [{value: '00', name: '', kana : '地域' }]; 
+          let getlocalcd = event.target.value;
+          this.cityselect = getlocalcd;
+          console.log(getlocalcd);
+          for( let i in KEN_All ){
+            let item = KEN_All[i];
+            if( item.localcd == getlocalcd ){
+              //console.log(item);
+              var town_check = TMP.find((v) => v.value == item.id);
+              if( town_check == undefined ){
+                let tmp_data = {
+                  value : item.id,
+                  post : item.post,
+                  name : item.townname,
+                  kana : item.townkana
+                }
+                //console.log(tmp_data);
+                TMP.push(tmp_data);
+              }
+            }
+          }
+          this.townList = TMP;
+          this.townselect = "00";
+        },
+        town_change(event){
+          let getid = event.target.value;
+          let item = KEN_All.find((v) => v.id == getid);//ココがゴール
+          console.log(item);
+          
+          post.value = item.post;
+          if (item.townname =='以下に掲載がない場合'){
+            address.value = item.prefname+item.cityname;
+            addresskana.value = item.prefkana+item.citykana;
+          }else{
+            address.value = item.prefname+item.cityname+item.townname;
+            addresskana.value = item.prefkana+item.citykana+item.townkana;
+          }
+          
+          //FileMaker.PerformScript;
+          let result = {
+            post : post.value,
+            address : address.value,
+            addresskana : addresskana.value
+          }
+          FileMaker.PerformScript ("AlertAddress", JSON.stringify(result))
+        }
+      },
+      computed: {
+        filteredLists: function() {
+          let st = performance.now();
+          let lists = [];
+          //console.log(this.keyword)
+
+          if( this.keyword.length > 0 ){
+              for(let i in KEN_All) {
+                  let item = KEN_All[i];
+                  let schctr = item.post+item.prefname+item.cityname+item.townname+item.prefkana+item.citykana+item.townkana;
+                  try{
+                    if(schctr.indexOf(this.keyword) !== -1 ) {
+                        lists.push(item);  //マッチしたitemを登録
+                    }
+                  }catch(e){}
+              }
+          }
+          
+          let ed = performance.now();
+          let tm = Math.round((ed - st),0)/1000;
+          this.counter = lists.length;
+          this.time = tm;
+          return lists;
+        }
+      },
+      watch: {
+        list: () => {
+            this.$nextTick(() => {
+                console.log(`ulの縦幅:${this.$refs.list.offsetHeight}`);
+            })
+        }
+      }
+    });
+    app.mount("#app") 
+
+    function SetData( basedata ){
+      let data = basedata.split('\r\n');
+      for (let i in data){
+        let line = data[i].replace(/\"/g, '');
+        let tmp = line.split(',');
+        //tbl_kenallと同じ内容で登録する：半角＞全角
+        let kencd = tmp[0].substr(0,2);
+        let localcd = tmp[0];
+        let item = {
+          id : i,
+          localcd : localcd,
+          post5 : tmp[1],
+          post : tmp[2],
+          prefkana : tmp[3],
+          citykana : tmp[4],
+          townkana : tmp[5],
+          prefname : tmp[6],
+          cityname : tmp[7],
+          townname : tmp[8],
+          flg1 : tmp[9],
+          flg2 : tmp[10],
+          flg3 : tmp[11],
+          flg4 : tmp[12],
+          flg5 : tmp[13],
+          flg6 : tmp[14],
+          kencd : kencd,
+        }
+        KEN_All.push(item);
+      
+        //PREF:都道府県のselectのみ作成
+        var PREF_check = prefList.find((v) => v.value == kencd);
+        if( PREF_check == undefined ){
+          
+          let tmp_data = {
+            value : kencd,
+            name : item.prefname,
+            kana : item.prefkana
+          }
+          //console.log(tmp_data);
+          prefList.push(tmp_data);
+        }
+      }
+      //app.time = tm;
+      app.counter = KEN_All.length;
+      console.log(app.counter);
+    }
+
+
+    function SetPref(){
+      console.log('SetPref');
+      let select_pref = document.getElementById('select_pref');
+      let option_html = "";
+      for (let i in prefList){
+        console.log(prefList[i]);
+        let value = prefList[i]['value'];
+        let name = prefList[i].name;
+        let kana = prefList[i].kana;
+        if(name.length>0){
+          let option = '<option value='+value+'>['+value+']'+name+'('+kana+')</option>';
+          option_html += option;
+        }else{
+          let option = '<option value='+value+'>('+kana+')</option>';
+          option_html += option;
+        }
+        
+      }
+      
+      select_pref.innerHTML=option_html;
+    }
+
+    // 半角→全角(カタカナ)
+    function kanaZenkaku(str){
+        if( str == undefined ){
+          return;
+        }
+        var kanaMap = {
+          'ｶﾞ': 'ガ', 'ｷﾞ': 'ギ', 'ｸﾞ': 'グ', 'ｹﾞ': 'ゲ', 'ｺﾞ': 'ゴ',
+          'ｻﾞ': 'ザ', 'ｼﾞ': 'ジ', 'ｽﾞ': 'ズ', 'ｾﾞ': 'ゼ', 'ｿﾞ': 'ゾ',
+          'ﾀﾞ': 'ダ', 'ﾁﾞ': 'ヂ', 'ﾂﾞ': 'ヅ', 'ﾃﾞ': 'デ', 'ﾄﾞ': 'ド',
+          'ﾊﾞ': 'バ', 'ﾋﾞ': 'ビ', 'ﾌﾞ': 'ブ', 'ﾍﾞ': 'ベ', 'ﾎﾞ': 'ボ',
+          'ﾊﾟ': 'パ', 'ﾋﾟ': 'ピ', 'ﾌﾟ': 'プ', 'ﾍﾟ': 'ペ', 'ﾎﾟ': 'ポ',
+          'ｳﾞ': 'ヴ', 'ﾜﾞ': 'ヷ', 'ｦﾞ': 'ヺ',
+          'ｱ': 'ア', 'ｲ': 'イ', 'ｳ': 'ウ', 'ｴ': 'エ', 'ｵ': 'オ',
+          'ｶ': 'カ', 'ｷ': 'キ', 'ｸ': 'ク', 'ｹ': 'ケ', 'ｺ': 'コ',
+          'ｻ': 'サ', 'ｼ': 'シ', 'ｽ': 'ス', 'ｾ': 'セ', 'ｿ': 'ソ',
+          'ﾀ': 'タ', 'ﾁ': 'チ', 'ﾂ': 'ツ', 'ﾃ': 'テ', 'ﾄ': 'ト',
+          'ﾅ': 'ナ', 'ﾆ': 'ニ', 'ﾇ': 'ヌ', 'ﾈ': 'ネ', 'ﾉ': 'ノ',
+          'ﾊ': 'ハ', 'ﾋ': 'ヒ', 'ﾌ': 'フ', 'ﾍ': 'ヘ', 'ﾎ': 'ホ',
+          'ﾏ': 'マ', 'ﾐ': 'ミ', 'ﾑ': 'ム', 'ﾒ': 'メ', 'ﾓ': 'モ',
+          'ﾔ': 'ヤ', 'ﾕ': 'ユ', 'ﾖ': 'ヨ',
+          'ﾗ': 'ラ', 'ﾘ': 'リ', 'ﾙ': 'ル', 'ﾚ': 'レ', 'ﾛ': 'ロ',
+          'ﾜ': 'ワ', 'ｦ': 'ヲ', 'ﾝ': 'ン',
+          'ｧ': 'ァ', 'ｨ': 'ィ', 'ｩ': 'ゥ', 'ｪ': 'ェ', 'ｫ': 'ォ',
+          'ｯ': 'ッ', 'ｬ': 'ャ', 'ｭ': 'ュ', 'ｮ': 'ョ',
+          '｡': '。', '､': '、', 'ｰ': 'ー', '｢': '「', '｣': '」', '･': '・'
+        };
+        try{
+          let reg = new RegExp('(' + Object.keys(kanaMap).join('|') + ')', 'g');
+          return str.replace(reg, function(s){
+            return kanaMap[s];
+          }).replace(/ﾞ/g, '゛').replace(/ﾟ/g, '゜');
+        }catch(e){
+          console.log(e)
+        }
+    }
+    console.log(kanaZenkaku("ｻﾝﾌﾟﾙ"))
+
+    // 全角→半角(カタカナ)
+    function kanaHankaku(str){
+      let kanaMap = {
+        "ガ": "ｶﾞ", "ギ": "ｷﾞ", "グ": "ｸﾞ", "ゲ": "ｹﾞ", "ゴ": "ｺﾞ",
+        "ザ": "ｻﾞ", "ジ": "ｼﾞ", "ズ": "ｽﾞ", "ゼ": "ｾﾞ", "ゾ": "ｿﾞ",
+        "ダ": "ﾀﾞ", "ヂ": "ﾁﾞ", "ヅ": "ﾂﾞ", "デ": "ﾃﾞ", "ド": "ﾄﾞ",
+        "バ": "ﾊﾞ", "ビ": "ﾋﾞ", "ブ": "ﾌﾞ", "ベ": "ﾍﾞ", "ボ": "ﾎﾞ",
+        "パ": "ﾊﾟ", "ピ": "ﾋﾟ", "プ": "ﾌﾟ", "ペ": "ﾍﾟ", "ポ": "ﾎﾟ",
+        "ヴ": "ｳﾞ", "ヷ": "ﾜﾞ", "ヺ": "ｦﾞ",
+        "ア": "ｱ", "イ": "ｲ", "ウ": "ｳ", "エ": "ｴ", "オ": "ｵ",
+        "カ": "ｶ", "キ": "ｷ", "ク": "ｸ", "ケ": "ｹ", "コ": "ｺ",
+        "サ": "ｻ", "シ": "ｼ", "ス": "ｽ", "セ": "ｾ", "ソ": "ｿ",
+        "タ": "ﾀ", "チ": "ﾁ", "ツ": "ﾂ", "テ": "ﾃ", "ト": "ﾄ",
+        "ナ": "ﾅ", "ニ": "ﾆ", "ヌ": "ﾇ", "ネ": "ﾈ", "ノ": "ﾉ",
+        "ハ": "ﾊ", "ヒ": "ﾋ", "フ": "ﾌ", "ヘ": "ﾍ", "ホ": "ﾎ",
+        "マ": "ﾏ", "ミ": "ﾐ", "ム": "ﾑ", "メ": "ﾒ", "モ": "ﾓ",
+        "ヤ": "ﾔ", "ユ": "ﾕ", "ヨ": "ﾖ",
+        "ラ": "ﾗ", "リ": "ﾘ", "ル": "ﾙ", "レ": "ﾚ", "ロ": "ﾛ",
+        "ワ": "ﾜ", "ヲ": "ｦ", "ン": "ﾝ",
+        "ァ": "ｧ", "ィ": "ｨ", "ゥ": "ｩ", "ェ": "ｪ", "ォ": "ｫ",
+        "ッ": "ｯ", "ャ": "ｬ", "ュ": "ｭ", "ョ": "ｮ",
+        "。": "｡", "、": "､", "ー": "ｰ", "「": "｢", "」": "｣", "・": "･"
+      };
+      let reg = new RegExp('(' + Object.keys(kanaMap).join('|') + ')', 'g');
+      return str.replace(reg, function(s){
+        return kanaMap[s];
+      }).replace(/゛/g, 'ﾞ').replace(/゜/g, 'ﾟ');
+    }
+    console.log(kanaHankaku("サンプル"))
+
+</script>
+</body>
+</html>
