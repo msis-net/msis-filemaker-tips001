@@ -20,8 +20,10 @@
     <title>Claris</title>
   </head>
 <body>
+  
    <div id="app" class="m-5">
       <form class="m-3">
+        <div class="small">#myApps/01.html</div>
         <input @input="change" id="filecsv" type="file" name="file">
       </form>
         
@@ -45,8 +47,11 @@
 <script type="module">
     import { createApp, ref } from 'vue'
     let KEN_All = [];//読み込んだ住所データ
+    
     var app = createApp({
       el: '#app',
+      setup() {
+      },
       data() {
         return {
           counter : 0,
@@ -102,8 +107,7 @@
           return lists;
         }
       }
-    });
-    app.mount("#app") 
+    }).mount("#app") 
 
 
     

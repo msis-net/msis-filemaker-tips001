@@ -20,9 +20,13 @@
     <title>Claris</title>
   </head>
 <body>
+  
    <div id="app" class="m-5">
-      
-        <input type="text" v-model="keyword"><span class="m-3">{{ counter }}件 / {{ time }} sec</span>
+    <div class="m-3">
+      <div class="small">#myApps/02.html</div>
+      <input type="text" v-model="keyword"><span class="m-3">{{ counter }}件 / {{ time }} sec</span>
+    </div>
+       
         <table class="table text-nowrap">
           <tr>
             <th>post</th>
@@ -89,7 +93,8 @@
                 SetData( reader.result );//読み取った中身を登録
                 let ed = performance.now();
                 let tm = Math.round((ed - st),0)/1000;
-                this.time = tm;
+                //this.time = tm;
+                const time = ref(tm)
                 this.counter = KEN_All.length;
                 console.log('ファイルを読み込みました！:'+KEN_All.length+'件['+tm+' sec]');
                 console.log(this.time,KEN_All[12000]);
