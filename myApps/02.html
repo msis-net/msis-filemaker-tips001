@@ -21,227 +21,124 @@
   </head>
 <body>
   
-   <div id="app" class="m-5">
-    <div class="m-3">
+  <div id="app" class="m-5">
       <div class="small">#myApps/02.html</div>
       <input type="text" v-model="keyword"><span class="m-3">{{ counter }}件 / {{ time }} sec</span>
-    </div>
-       
-        <table class="table text-nowrap">
-          <tr>
-            <th>post</th>
-            <th>pref</th>
-            <th>city</th>
-            <th>town</th>
+      <table class="table text-nowrap">
+        <tr>
+          <th>post</th>
+          <th>pref</th>
+          <th>city</th>
+          <th>town</th>
+        </tr>
+          <tr v-for="list in filteredLists">
+              <td v-text="list.post"></td>
+              <td v-text="list.prefname"></td>
+              <td v-text="list.cityname"></td>
+              <td v-text="list.townname"></td>
           </tr>
-            <tr v-for="list in filteredLists">
-                <td v-text="list.post"></td>
-                <td v-text="list.prefname"></td>
-                <td v-text="list.cityname"></td>
-                <td v-text="list.townname"></td>
-            </tr>
-        </table>
-    </div>
+      </table>
+  </div>
 
 <script type="module">
-    import { createApp, ref } from 'vue'
-    let KEN_All = [];//読み込んだ住所データ
-    let app = createApp({
-      el: '#app',
-      data() {
-        return {
-          counter : 0,
-          time : 0,
-          keyword: '',
-          lists: [],    //一覧に表示されるリスト
-        }
-      },
-      mounted() {
-            window.onload = () => {
-              let st = performance.now();
-              let xhr = new XMLHttpRequest();
-              xhr.open('GET', 'utf_all.csv', true);
-              xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                  if (xhr.status === 200) {
-                    SetData( xhr.responseText );
-                    let ed = performance.now();
-                    let tm = Math.round((ed - st),0)/1000;
-                    this.time = tm;
-                    console.log('通信完了'+this.time);
-                    UpCountTime(12.34);
-                  } else {
-                    console.log('通信エラーが発生')
-                  }
-                } else {
-                  console.log('通信中...')
-                }
-              }
-              xhr.send(null);
-            };
-        },
-      methods: {
-        change(e) {
-          console.log(e.target.value);
-          let input = document.getElementById('filecsv');
-          let reader = new FileReader();
-          let st = performance.now();
-          let tm = 0;
-          for(let file of input.files){
-            reader.readAsText(file, 'utf-8');
-            reader.onload = ()=> {
-                SetData( reader.result );//読み取った中身を登録
-                let ed = performance.now();
-                let tm = Math.round((ed - st),0)/1000;
-                //this.time = tm;
-                const time = ref(tm)
-                this.counter = KEN_All.length;
-                console.log('ファイルを読み込みました！:'+KEN_All.length+'件['+tm+' sec]');
-                console.log(this.time,KEN_All[12000]);
-                
-            };
-          }
-        }
-      },
-      computed: {
-        filteredLists: function() {
-          let st = performance.now();
-          let lists = [];
-          //console.log(this.keyword)
+import { ref, createApp } from "vue" 
 
-          if( this.keyword.length > 0 ){
-              for(let i in KEN_All) {
-                  let item = KEN_All[i];
-                  let schctr = item.post+item.prefname+item.cityname+item.townname+item.prefkana+item.citykana+item.townkana;
-                  try{
-                    if(schctr.indexOf(this.keyword) !== -1 ) {
-                        lists.push(item);  //マッチしたitemを登録
-                    }
-                  }catch(e){}
-              }
+let KEN_All = []
+
+const app = createApp({
+  setup () {
+    const counter = ref(0)
+    const time = ref(0)
+    const keyword = ref('')
+    return{
+      counter,
+      time,
+      keyword,
+    }
+  },
+  mounted() {
+    window.onload = () => {
+      let st = performance.now()
+      let xhr = new XMLHttpRequest()
+      xhr.open('GET', 'utf_all.csv', true)
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            KEN_All = SetData( xhr.responseText )
+            let ed = performance.now()
+            let tm = Math.round((ed - st),0)/1000
+            this.time = tm
+            console.log('Done '+this.time)
+            UpCountTime( KEN_All.length, tm )
+          } else {
+            console.log('Error!')
           }
-          
-          let ed = performance.now();
-          let tm = Math.round((ed - st),0)/1000;
-          this.counter = lists.length;
-          this.time = tm;
-          return lists;
-        }
-      },
-      watch: {
-        list: () => {
-            this.$nextTick(() => {
-                console.log(`ulの縦幅:${this.$refs.list.offsetHeight}`);
-            })
+        } else {
+          console.log('Connecting...')
         }
       }
-    });
-    app.mount("#app") 
-
-    function UpCountTime(count,time){
-      console.log('count'+count);
-      app.counter = count;
-      app.time = time;
-      
+        xhr.send(null)
     }
-    
-    function SetData( basedata ){
-      let data = basedata.split('\r\n');
-      for (let i in data){
-        let line = data[i].replace(/\"/g, '');
-        let tmp = line.split(',');
-        //tbl_kenallと同じ内容で登録する：半角＞全角
-        let item = {
-          id : i,
-          localcd : tmp[0],
-          post5 : tmp[1],
-          post : tmp[2],
-          prefkana : tmp[3],
-          citykana : tmp[4],
-          townkana : tmp[5],
-          prefname : tmp[6],
-          cityname : tmp[7],
-          townname : tmp[8],
-          flg1 : tmp[9],
-          flg2 : tmp[10],
-          flg3 : tmp[11],
-          flg4 : tmp[12],
-          flg5 : tmp[13],
-          flg6 : tmp[14],
-          kencd : tmp[0].substr(0,2),
+  },
+  computed: {
+    filteredLists: function() {
+      let st = performance.now()
+      let lists = []
+      if( this.keyword.length > 0 ){
+        for(let i in KEN_All) {
+          let item = KEN_All[i]
+          let schctr = item.post+item.prefname+item.cityname+item.townname+item.prefkana+item.citykana+item.townkana
+          try{
+            if(schctr.indexOf(this.keyword) !== -1 ) {
+              lists.push(item)
+            }
+          }catch(e){}
         }
-        KEN_All.push(item);
       }
-      app.counter = KEN_All.length;
+      let ed = performance.now()
+      let tm = Math.round((ed - st),0)/1000
+      this.counter = lists.length
+      this.time = tm
+      return lists
     }
+  }
+}).mount('#app') 
 
-    // 半角→全角(カタカナ)
-    function kanaZenkaku(str){
-        if( str == undefined ){
-          return;
-        }
-        var kanaMap = {
-          'ｶﾞ': 'ガ', 'ｷﾞ': 'ギ', 'ｸﾞ': 'グ', 'ｹﾞ': 'ゲ', 'ｺﾞ': 'ゴ',
-          'ｻﾞ': 'ザ', 'ｼﾞ': 'ジ', 'ｽﾞ': 'ズ', 'ｾﾞ': 'ゼ', 'ｿﾞ': 'ゾ',
-          'ﾀﾞ': 'ダ', 'ﾁﾞ': 'ヂ', 'ﾂﾞ': 'ヅ', 'ﾃﾞ': 'デ', 'ﾄﾞ': 'ド',
-          'ﾊﾞ': 'バ', 'ﾋﾞ': 'ビ', 'ﾌﾞ': 'ブ', 'ﾍﾞ': 'ベ', 'ﾎﾞ': 'ボ',
-          'ﾊﾟ': 'パ', 'ﾋﾟ': 'ピ', 'ﾌﾟ': 'プ', 'ﾍﾟ': 'ペ', 'ﾎﾟ': 'ポ',
-          'ｳﾞ': 'ヴ', 'ﾜﾞ': 'ヷ', 'ｦﾞ': 'ヺ',
-          'ｱ': 'ア', 'ｲ': 'イ', 'ｳ': 'ウ', 'ｴ': 'エ', 'ｵ': 'オ',
-          'ｶ': 'カ', 'ｷ': 'キ', 'ｸ': 'ク', 'ｹ': 'ケ', 'ｺ': 'コ',
-          'ｻ': 'サ', 'ｼ': 'シ', 'ｽ': 'ス', 'ｾ': 'セ', 'ｿ': 'ソ',
-          'ﾀ': 'タ', 'ﾁ': 'チ', 'ﾂ': 'ツ', 'ﾃ': 'テ', 'ﾄ': 'ト',
-          'ﾅ': 'ナ', 'ﾆ': 'ニ', 'ﾇ': 'ヌ', 'ﾈ': 'ネ', 'ﾉ': 'ノ',
-          'ﾊ': 'ハ', 'ﾋ': 'ヒ', 'ﾌ': 'フ', 'ﾍ': 'ヘ', 'ﾎ': 'ホ',
-          'ﾏ': 'マ', 'ﾐ': 'ミ', 'ﾑ': 'ム', 'ﾒ': 'メ', 'ﾓ': 'モ',
-          'ﾔ': 'ヤ', 'ﾕ': 'ユ', 'ﾖ': 'ヨ',
-          'ﾗ': 'ラ', 'ﾘ': 'リ', 'ﾙ': 'ル', 'ﾚ': 'レ', 'ﾛ': 'ロ',
-          'ﾜ': 'ワ', 'ｦ': 'ヲ', 'ﾝ': 'ン',
-          'ｧ': 'ァ', 'ｨ': 'ィ', 'ｩ': 'ゥ', 'ｪ': 'ェ', 'ｫ': 'ォ',
-          'ｯ': 'ッ', 'ｬ': 'ャ', 'ｭ': 'ュ', 'ｮ': 'ョ',
-          '｡': '。', '､': '、', 'ｰ': 'ー', '｢': '「', '｣': '」', '･': '・'
-        };
-        try{
-          let reg = new RegExp('(' + Object.keys(kanaMap).join('|') + ')', 'g');
-          return str.replace(reg, function(s){
-            return kanaMap[s];
-          }).replace(/ﾞ/g, '゛').replace(/ﾟ/g, '゜');
-        }catch(e){
-          console.log(e)
-        }
+function SetData( basedata ){
+    let array =[]
+    let data = basedata.split('\r\n')
+    for (let i in data){
+      let line = data[i].replace(/\"/g, '')
+      let tmp = line.split(',')
+      let item = {
+        id : i,
+        localcd : tmp[0],
+        post5 : tmp[1],
+        post : tmp[2],
+        prefkana : tmp[3],
+        citykana : tmp[4],
+        townkana : tmp[5],
+        prefname : tmp[6],
+        cityname : tmp[7],
+        townname : tmp[8],
+        flg1 : tmp[9],
+        flg2 : tmp[10],
+        flg3 : tmp[11],
+        flg4 : tmp[12],
+        flg5 : tmp[13],
+        flg6 : tmp[14],
+        kencd : tmp[0].substr(0,2),
+      }
+      array.push(item)
     }
-    console.log(kanaZenkaku("ｻﾝﾌﾟﾙ"))
+    return array
+  }  
 
-    // 全角→半角(カタカナ)
-    function kanaHankaku(str){
-      let kanaMap = {
-        "ガ": "ｶﾞ", "ギ": "ｷﾞ", "グ": "ｸﾞ", "ゲ": "ｹﾞ", "ゴ": "ｺﾞ",
-        "ザ": "ｻﾞ", "ジ": "ｼﾞ", "ズ": "ｽﾞ", "ゼ": "ｾﾞ", "ゾ": "ｿﾞ",
-        "ダ": "ﾀﾞ", "ヂ": "ﾁﾞ", "ヅ": "ﾂﾞ", "デ": "ﾃﾞ", "ド": "ﾄﾞ",
-        "バ": "ﾊﾞ", "ビ": "ﾋﾞ", "ブ": "ﾌﾞ", "ベ": "ﾍﾞ", "ボ": "ﾎﾞ",
-        "パ": "ﾊﾟ", "ピ": "ﾋﾟ", "プ": "ﾌﾟ", "ペ": "ﾍﾟ", "ポ": "ﾎﾟ",
-        "ヴ": "ｳﾞ", "ヷ": "ﾜﾞ", "ヺ": "ｦﾞ",
-        "ア": "ｱ", "イ": "ｲ", "ウ": "ｳ", "エ": "ｴ", "オ": "ｵ",
-        "カ": "ｶ", "キ": "ｷ", "ク": "ｸ", "ケ": "ｹ", "コ": "ｺ",
-        "サ": "ｻ", "シ": "ｼ", "ス": "ｽ", "セ": "ｾ", "ソ": "ｿ",
-        "タ": "ﾀ", "チ": "ﾁ", "ツ": "ﾂ", "テ": "ﾃ", "ト": "ﾄ",
-        "ナ": "ﾅ", "ニ": "ﾆ", "ヌ": "ﾇ", "ネ": "ﾈ", "ノ": "ﾉ",
-        "ハ": "ﾊ", "ヒ": "ﾋ", "フ": "ﾌ", "ヘ": "ﾍ", "ホ": "ﾎ",
-        "マ": "ﾏ", "ミ": "ﾐ", "ム": "ﾑ", "メ": "ﾒ", "モ": "ﾓ",
-        "ヤ": "ﾔ", "ユ": "ﾕ", "ヨ": "ﾖ",
-        "ラ": "ﾗ", "リ": "ﾘ", "ル": "ﾙ", "レ": "ﾚ", "ロ": "ﾛ",
-        "ワ": "ﾜ", "ヲ": "ｦ", "ン": "ﾝ",
-        "ァ": "ｧ", "ィ": "ｨ", "ゥ": "ｩ", "ェ": "ｪ", "ォ": "ｫ",
-        "ッ": "ｯ", "ャ": "ｬ", "ュ": "ｭ", "ョ": "ｮ",
-        "。": "｡", "、": "､", "ー": "ｰ", "「": "｢", "」": "｣", "・": "･"
-      };
-      let reg = new RegExp('(' + Object.keys(kanaMap).join('|') + ')', 'g');
-      return str.replace(reg, function(s){
-        return kanaMap[s];
-      }).replace(/゛/g, 'ﾞ').replace(/゜/g, 'ﾟ');
-    }
-    console.log(kanaHankaku("サンプル"))
-
+  function UpCountTime(count,time){
+    app.counter = count
+    app.time = time
+  }
+  
 </script>
 </body>
 </html>
